@@ -25,15 +25,19 @@ package com.microsoft.aad.adal.example.userappwithbroker;
 
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -54,6 +58,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import javax.crypto.SecretKey;
@@ -69,6 +74,8 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+
+import com.microsoft.device.display.DisplayMask;
 
 /**
  * Sample for acquiring token via broker.
@@ -391,6 +398,81 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return mSharedPreference.getString((upn.trim() + ":" + requestAuthority.trim() + ":authority").toLowerCase(), null);
     }
 
+
+    /**
+     * Returns true if the app is being spanned across two screens.
+     */
+    public boolean isAppSpanned(final Activity activity) {
+        if (!isDualScreenDevice(activity)) {
+            return false;
+        }
+
+        int rotation = getRotation(activity);
+        Rect hinge = getHinge(activity, rotation);
+        Rect windowRect = getWindowRect(activity);
+
+        if (windowRect.width() > 0 && windowRect.height() > 0) {
+            // The windowRect doesn't intersect hinge
+            return hinge.intersect(windowRect);
+        }
+
+        return false;
+    }
+    /**
+     * Get the device's rotation.
+     *
+     * @return Surface.ROTATION_0, Surface.ROTATION_90, Surface.ROTATION_180 or Surface.ROTATION_270
+     */
+    public int getRotation(Activity activity) {
+        WindowManager wm = (WindowManager) activity.getSystemService(Context.WINDOW_SERVICE);
+        int rotation = 0;
+        if (wm != null) {
+            rotation = wm.getDefaultDisplay().getRotation();
+        }
+        return rotation;
+    }
+
+    /**
+     * Returns true if this device supports dual screen mode.
+     */
+    private boolean isDualScreenDevice(final Context context) {
+        final String feature = "com.microsoft.device.display.displaymask";
+        final PackageManager pm = context.getPackageManager();
+
+        if (pm.hasSystemFeature(feature)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Returns the area of the display that is not functional for displaying content.
+     *
+     * @param Context
+     * @param rotation Surface.ROTATION_0, Surface.ROTATION_90, Surface.ROTATION_180 or Surface.ROTATION_270
+     */
+    private Rect getHinge(final Context context,
+                          int rotation) {
+        // Hinge's coordinates of its 4 edges in different mode
+        // Double Landscape Rect(0, 1350 - 1800, 1434)
+        // Double Portrait  Rect(1350, 0 - 1434, 1800)
+        final DisplayMask displayMask = DisplayMask.fromResourcesRect(context);
+        List<Rect> boundings = displayMask.getBoundingRectsForRotation(rotation);
+        if (boundings.size() == 0) {
+            return new Rect(0, 0, 0, 0);
+        }
+        return boundings.get(0);
+    }
+
+    /**
+     * Returns the area of the displaying window.
+     */
+    private Rect getWindowRect(final Activity activity) {
+        Rect windowRect = new Rect();
+        activity.getWindowManager().getDefaultDisplay().getRectSize(windowRect);
+        return windowRect;
+    }
 }
 
 class SampleTelemetry implements IDispatcher {

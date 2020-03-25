@@ -68,10 +68,12 @@ android {
 dependencies {
     // Compile Dependencies
     implementation "com.google.android.material:material:$rootProject.ext.materialVersion"
+    implementation files('libs/com.microsoft.device.display.displaymask.jar')
 
     localImplementation(project(':adal'))
-    distImplementation("com.microsoft.aad:adal:1.16.3-hf2") {
+    distImplementation("com.microsoft.aad:adal:3.0.0-LauncherAlpha") {
         exclude module: 'support-v4'
         exclude module: 'android'
+        exclude group: 'com.microsoft.device'
     }
 }
