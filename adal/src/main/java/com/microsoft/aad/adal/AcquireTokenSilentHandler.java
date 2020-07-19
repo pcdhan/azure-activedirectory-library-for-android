@@ -153,7 +153,7 @@ class AcquireTokenSilentHandler {
         try {
             final JWSBuilder jwsBuilder = new JWSBuilder();
             final Oauth2 oauthRequest = new Oauth2(mAuthRequest, mWebRequestHandler, jwsBuilder);
-
+            oauthRequest.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
             result = oauthRequest.refreshTokenUsingAssertion(samlAssertion, assertionType);
             if (result != null && StringExtensions.isNullOrBlank(result.getRefreshToken())) {
                 Logger.w(TAG + methodName, "Refresh token is not returned or empty");
@@ -194,6 +194,7 @@ class AcquireTokenSilentHandler {
         try {
             final JWSBuilder jwsBuilder = new JWSBuilder();
             final Oauth2 oauthRequest = new Oauth2(mAuthRequest, mWebRequestHandler, jwsBuilder);
+            oauthRequest.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
             result = oauthRequest.refreshToken(refreshToken);
             if (result != null && StringExtensions.isNullOrBlank(result.getRefreshToken())) {
                 Logger.w(TAG + methodName, "Refresh token is not returned or empty");

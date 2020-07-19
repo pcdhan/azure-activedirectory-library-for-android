@@ -43,12 +43,14 @@ import com.microsoft.aad.adal.AuthenticationContext;
 import com.microsoft.aad.adal.AuthenticationException;
 import com.microsoft.aad.adal.AuthenticationResult;
 import com.microsoft.aad.adal.AuthenticationSettings;
+import com.microsoft.aad.adal.GenericOpenIDConnectProvider;
 import com.microsoft.aad.adal.IDispatcher;
 import com.microsoft.aad.adal.PromptBehavior;
 import com.microsoft.aad.adal.Telemetry;
 import com.microsoft.aad.adal.UserInfo;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -97,6 +99,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private PromptBehavior mPromptBehavior;
 
     private RelativeLayout mContentMain;
+
+    private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -219,9 +223,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void run() {
                 String uId = requestOptions.getLoginHint();
 
-                if(requestOptions.getAssertionType().getAssertionVersion() == null){
+                if (requestOptions.getAssertionType().getAssertionVersion() == null) {
                     showMessage("Assertion type is selected as None");
-                } else if(TextUtils.isEmpty(uId)) {
+                } else if (TextUtils.isEmpty(uId)) {
                     showMessage("No uId has been provided, cannot proceed with silent call");
                 } else {
                     callAcquireTokenSilentWithAssertion(requestOptions.getAssertion(), requestOptions.getAssertionType().getAssertionVersion(),
@@ -233,10 +237,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    /*
     void prepareRequestParameters(final AcquireTokenFragment.RequestOptions requestOptions) {
         mRequestAuthority = requestOptions.getAuthority();
         mAuthority = mRequestAuthority;
         mAuthContext = new AuthenticationContext(mApplicationContext, mAuthority, true);
+
+        //TODO: We can add UX to set or not set this
+        mAuthContext.setClientCapabilites(new ArrayList<>(Arrays.asList("CP1")));
+        AuthenticationSettings.INSTANCE.setUseBroker(requestOptions.getUseBroker());
+        mLoginhint = requestOptions.getLoginHint();
+        mPromptBehavior = requestOptions.getBehavior();
+    }
+    */
+
+    /**
+     * GenericOpenIDConnectProvider - Initialization
+     */
+    void prepareRequestParameters(final AcquireTokenFragment.RequestOptions requestOptions) {
+        genericOpenIDConnectProvider =
+                new GenericOpenIDConnectProvider.Builder()
+                        .setClientID("")
+                        .setAuthorizationURL("")
+                        .setTokenURL("")
+                        .setRedirectURL("")
+                        .setScope("openid profile email offline_access")
+                        .setResource("e631464b-82f4-490d-9195-c1cb0785e82d") //placeholder
+                        .setPrompt(requestOptions.getBehavior())
+                        .setLoginHint(requestOptions.getLoginHint())
+                        .setExtraQp(requestOptions.getExtraQp())
+                        .build();
+
+        mRequestAuthority = requestOptions.getAuthority();
+        mAuthority = mRequestAuthority;
+        mAuthContext = new AuthenticationContext(mApplicationContext, genericOpenIDConnectProvider);
 
         //TODO: We can add UX to set or not set this
         mAuthContext.setClientCapabilites(new ArrayList<>(Arrays.asList("CP1")));
@@ -324,27 +358,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void callAcquireTokenWithResource(final String resource, PromptBehavior prompt, final String loginHint,
                                               final String clientId, final String redirectUri, final String extraQp) {
+
+        AuthenticationCallback<AuthenticationResult> authenticationCallback =getAuthenticationCallback();
+        /*
         mAuthContext.acquireToken(MainActivity.this, resource, clientId, redirectUri, loginHint,
-                prompt, extraQp, new AuthenticationCallback<AuthenticationResult>() {
+                prompt, extraQp, authenticationCallback);
+        */
+        mAuthContext.acquireToken(MainActivity.this,authenticationCallback,genericOpenIDConnectProvider);
 
-                    @Override
-                    public void onSuccess(AuthenticationResult authenticationResult) {
-                        mAuthResult = authenticationResult;
-                        showMessage("Response from broker: " + authenticationResult.getAccessToken());
-
-                        // Update this user for next call
-                        if (authenticationResult.getUserInfo() != null) {
-                            saveUserIdFromAuthenticationResult(authenticationResult);
-                        }
-                    }
-
-                    @Override
-                    public void onError(Exception exc) {
-                        showMessage("MainActivity userapp:" + exc.getMessage());
-                    }
-                });
     }
 
+    private AuthenticationCallback<AuthenticationResult> getAuthenticationCallback(){
+        return  new AuthenticationCallback<AuthenticationResult>(){
+
+        @Override
+        public void onSuccess(AuthenticationResult authenticationResult) {
+            mAuthResult = authenticationResult;
+            showMessage("Response from broker: " + authenticationResult.getAccessToken());
+
+            // Update this user for next call
+            if (authenticationResult.getUserInfo() != null) {
+                saveUserIdFromAuthenticationResult(authenticationResult);
+            }
+        }
+
+        @Override
+        public void onError(Exception exc) {
+            showMessage("MainActivity userapp:" + exc.getMessage());
+        }
+    };
+}
     /**
      * Retrieves user unique id from {@link AuthenticationResult}, and save it into shared preference
      * for later use.

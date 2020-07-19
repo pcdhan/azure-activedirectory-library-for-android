@@ -100,6 +100,30 @@ public class AuthenticationContext {
      */
     private UUID mRequestCorrelationId = null;
 
+
+    private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
+
+
+    /**
+     * Constructs context to use with known GenericOpenIDConnectProvider. It uses
+     * default cache that stores encrypted tokens.
+     *
+     * @param appContext        It needs to have handle to the {@link Context} to use
+     *                          the SharedPreferencesFileManager as a Default cache storage. It does not
+     *                          need to be activity.
+     * @param genericOpenIDConnectProvider         GenericOpenIDConnectProvider
+     *
+     */
+    public AuthenticationContext(Context appContext, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+        // Fixes are required for SDK 16-18
+        // The fixes need to be applied before any use of Java Cryptography
+        // Architecture primitives. Default cache uses encryption
+        PRNGFixes.apply();
+        this.genericOpenIDConnectProvider=genericOpenIDConnectProvider;
+        //Validate an authority
+        boolean validateAuthority = false;
+        initialize(appContext, genericOpenIDConnectProvider.getAuthority(), new DefaultTokenCacheStore(appContext), validateAuthority, true);
+    }
     /**
      * Constructs context to use with known authority to get the token. It uses
      * default cache that stores encrypted tokens.
@@ -266,6 +290,24 @@ public class AuthenticationContext {
      * this refresh token from cache and start authentication.
      *
      * @param activity    required to launch authentication activity.
+     * @param genericOpenIDConnectProvider All config wrapped in obbject
+     */
+    public void acquireToken(Activity activity,AuthenticationCallback<AuthenticationResult> authenticationCallback, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+
+        acquireToken(genericOpenIDConnectProvider.getResource(), genericOpenIDConnectProvider.getClientID(),
+                genericOpenIDConnectProvider.getRedirectURL(), genericOpenIDConnectProvider.getLoginHint(),
+                PromptBehavior.Auto, null,
+                null, authenticationCallback,
+                EventStrings.ACQUIRE_TOKEN_1, wrapActivity(activity), false);
+    }
+
+    /**
+     * acquireToken will start interactive flow if needed. It checks the cache
+     * to return existing result if not expired. It tries to use refresh token
+     * if available. If it fails to get token with refresh token, it will remove
+     * this refresh token from cache and start authentication.
+     *
+     * @param activity    required to launch authentication activity.
      * @param resource    required resource identifier.
      * @param clientId    required client identifier
      * @param redirectUri Optional. It will use package name info if not
@@ -384,7 +426,6 @@ public class AuthenticationContext {
     public void acquireToken(Activity activity, String resource, String clientId,
                              @Nullable String redirectUri, @Nullable String loginHint, @Nullable PromptBehavior prompt,
                              @Nullable String extraQueryParameters, AuthenticationCallback<AuthenticationResult> callback) {
-
         acquireToken(resource, clientId, redirectUri, loginHint, prompt, extraQueryParameters,
                 null, callback, EventStrings.ACQUIRE_TOKEN_5, wrapActivity(activity), false);
     }
@@ -560,6 +601,7 @@ public class AuthenticationContext {
             request.setTelemetryRequestId(requestId);
             setAppInfoToRequest(request);
             request.setClientCapabilities(mClientCapabilites);
+            request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
 
             if (!StringExtensions.isNullOrBlank(loginHint)) {
                 apiEvent.setLoginHint(loginHint);

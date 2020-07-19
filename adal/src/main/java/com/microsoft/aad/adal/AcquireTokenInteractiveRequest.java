@@ -94,8 +94,9 @@ final class AcquireTokenInteractiveRequest {
     AuthenticationResult acquireTokenWithAuthCode(final String url) throws AuthenticationException {
         final String methodName = ":acquireTokenWithAuthCode";
         Logger.v(TAG + methodName, "Start token acquisition with auth code.", mAuthRequest.getLogInfo(), null);
-
         final Oauth2 oauthRequest = new Oauth2(mAuthRequest, new WebRequestHandler());
+        oauthRequest.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
+
         final AuthenticationResult result;
         try {
             result = oauthRequest.getToken(url);

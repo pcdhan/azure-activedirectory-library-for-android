@@ -143,6 +143,7 @@ public class OauthTests {
     public void testEncodeDecodeProtocolState() throws UnsupportedEncodingException {
         final String resource = "resource:" + UUID.randomUUID().toString();
         final String authority = "http://www.something.com";
+
         final AuthenticationRequest request = createAuthenticationRequest(
                 authority, resource,
                 "client", "redirect", "loginhint@ggg.com", null, null, null, false);
@@ -235,7 +236,9 @@ public class OauthTests {
                 "http://www.something.com", "resource%20urn:!#$    &'( )*+,/:  ;=?@[]",
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890",
                 "loginhint 1234567890-+=;'", null, null, null, false);
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider = request.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2 = createOAuthInstance(request);
+        oauth2.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         final String actualCodeRequestUrl = oauth2.getCodeRequestUrl();
         assertTrue("Matching message",
                 actualCodeRequestUrl.contains("http://www.something.com/oauth2/authorize?response_type=code&client_id=client+1234567890-%2B%3D%3B%21%23%24+++%26%27%28+%29*%2B%2C%2F%3A++%3B%3D%3F%40%5B%5D&resource=resource%2520urn%3A%21%23%24++++%26%27%28+%29*%2B%2C%2F%3A++%3B%3D%3F%40%5B%5D&redirect_uri=redirect+1234567890&state="));
@@ -248,9 +251,9 @@ public class OauthTests {
                 "resource%20urn:!#$    &'( )*+,/:  ;=?@[]",
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890", "", null,
                 null, null, false);
-
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider1 = requestWithoutLogin.getGenericOpenIDConnectProvider();
         final Oauth2 oauthWithoutLoginHint = createOAuthInstance(requestWithoutLogin);
-
+        oauthWithoutLoginHint.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider1);
         final String actualCodeRequestNoLoginhint = oauthWithoutLoginHint.getCodeRequestUrl();
         assertTrue("Matching message", actualCodeRequestNoLoginhint.contains(
                 "http://www.something.com/oauth2/authorize?response_type=code&client_id=client+1234567890-%2B%3D%3B%21%23%24+++%26%27%28+%29*%2B%2C%2F%3A++%3B%3D%3F%40%5B%5D&resource=resource%2520urn%3A%21%23%24++++%26%27%28+%29*%2B%2C%2F%3A++%3B%3D%3F%40%5B%5D&redirect_uri=redirect+1234567890&state="));
@@ -262,8 +265,9 @@ public class OauthTests {
                 "resource%20urn:!#$    &'( )*+,/:  ;=?@[]",
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890", "",
                 PromptBehavior.Always, null, null, false);
-
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider2 =requestAlways.getGenericOpenIDConnectProvider();
         final Oauth2 oauthAlways = createOAuthInstance(requestAlways);
+        oauthAlways.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider2);
         final String actualCodeRequestWithPrompt = oauthAlways.getCodeRequestUrl();
 
         assertTrue(
@@ -277,7 +281,9 @@ public class OauthTests {
                 "resource%20urn:!#$    &'( )*+,/:  ;=?@[]",
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890", "",
                 PromptBehavior.Always, "extra=1", null, false);
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider3 = requestExtraParam.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2WithExtraPara = createOAuthInstance(requestExtraParam);
+        oauth2WithExtraPara.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider3);
         final String actualCodeRequestWithExtraParam = oauth2WithExtraPara.getCodeRequestUrl();
         assertTrue("Prompt", actualCodeRequestWithExtraParam.contains("&prompt=login&haschrome=1&extra=1"));
 
@@ -286,13 +292,17 @@ public class OauthTests {
                 "resource%20urn:!#$    &'( )*+,/:  ;=?@[]",
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890", "",
                 PromptBehavior.Always, "extra=1&haschrome=1", null, false);
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider4 = extraQPContainHasChrome.getGenericOpenIDConnectProvider();
         final Oauth2 oAuthxtraQPContainHasChrome = createOAuthInstance(extraQPContainHasChrome);
+        oAuthxtraQPContainHasChrome.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider4);
         final String actualCodeRequestQPHasChrome = oAuthxtraQPContainHasChrome.getCodeRequestUrl();
         assertTrue("Prompt", actualCodeRequestQPHasChrome.contains("&prompt=login&extra=1&haschrome=1"));
 
         request.setAppName("test.mock.");
         request.setAppVersion("test");
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider5 = request.getGenericOpenIDConnectProvider();
         final Oauth2 oAuthWithAppInfo = createOAuthInstance(request);
+        oAuthWithAppInfo.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider5);
         assertTrue("App Info", oAuthWithAppInfo.getCodeRequestUrl().contains("&x-app-name=test.mock.&x-app-ver=test"));
     }
 
@@ -302,7 +312,10 @@ public class OauthTests {
         final AuthenticationRequest request = new AuthenticationRequest("authority51", "resource52", "client53", "redirect54",
                 "loginhint55", PromptBehavior.Always, "p=extraQueryParam56", correlationId, false, "testClaims");
 
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider = request.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2 = createOAuthInstance(request);
+        oauth2.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
+
         final String codeRequestUrl = oauth2.getCodeRequestUrl();
         assertTrue(codeRequestUrl.contains("claims=testClaims"));
         assertTrue(codeRequestUrl.contains("p=extraQueryParam56"));
@@ -314,7 +327,9 @@ public class OauthTests {
         final AuthenticationRequest request = new AuthenticationRequest("authority51", "resource52", "client53", "redirect54",
                 "loginhint55", PromptBehavior.Always, "claims=testclaims&a=b", correlationId, false, null);
 
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider = request.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2 = createOAuthInstance(request);
+        oauth2.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         final String codeRequestUrl = oauth2.getCodeRequestUrl();
         assertTrue(codeRequestUrl.contains("claims=testclaims&a=b"));
     }
@@ -325,7 +340,9 @@ public class OauthTests {
         final AuthenticationRequest request = new AuthenticationRequest("authority51", "resource52", "client53", "redirect54",
                 "loginhint55", PromptBehavior.Always, "instance_aware=true", correlationId, false, null);
 
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider = request.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2 = createOAuthInstance(request);
+        oauth2.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         final String codeRequestUrl = oauth2.getCodeRequestUrl();
         assertTrue(codeRequestUrl.contains("instance_aware=true"));
     }
@@ -338,8 +355,9 @@ public class OauthTests {
                 "client 1234567890-+=;!#$   &'( )*+,/:  ;=?@[]", "redirect 1234567890",
                 "loginhint 1234567890-+=;'", null, null, null, false);
 
+        GenericOpenIDConnectProvider genericOpenIDConnectProvider =request.getGenericOpenIDConnectProvider();
         final Oauth2 oauth2 = createOAuthInstance(request);
-
+        oauth2.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         final String actualCodeRequestUrl = oauth2.getCodeRequestUrl();
         assertTrue("Matching message", actualCodeRequestUrl.contains(AAD.ADAL_ID_PLATFORM + "=Android"));
         assertTrue("Matching message",
@@ -746,6 +764,7 @@ public class OauthTests {
         final AuthenticationRequest request = new AuthenticationRequest(
                 "https://login.microsoftonline.com/test.com", "resource", "dummy-clientid", false);
         final Oauth2 oauth2 = new Oauth2(request);
+        oauth2.setGenericOpenIDConnectProvider(request.getGenericOpenIDConnectProvider());
         AuthenticationResult result = oauth2.processUIResponseParams(response);
         assertNull("Result is null", result);
 
@@ -789,7 +808,7 @@ public class OauthTests {
                 "https://login.microsoftonline.com/test.com", "resource",
                 "dummy-clientid", false);
         final Oauth2 oauth2 = new Oauth2(request);
-
+        oauth2.setGenericOpenIDConnectProvider(request.getGenericOpenIDConnectProvider());
         // call when response has error
         response.put(AuthenticationConstants.OAuth2.CODE, "12345");
         response.put(AuthenticationConstants.OAuth2.CLOUD_INSTANCE_HOST_NAME, "login.microsoftonline.de");
@@ -863,8 +882,9 @@ public class OauthTests {
         if (mockWebRequest == null) {
             return createOAuthInstance(authenticationRequest);
         }
-
-        return new Oauth2(authenticationRequest, mockWebRequest);
+        Oauth2 oauth2 = new Oauth2(authenticationRequest, mockWebRequest);
+        oauth2.setGenericOpenIDConnectProvider(authenticationRequest.getGenericOpenIDConnectProvider());
+        return oauth2;
     }
 
     private static Oauth2 createOAuthInstance(final AuthenticationRequest authenticationRequest,
@@ -873,8 +893,9 @@ public class OauthTests {
         if (mockWebRequest == null) {
             return createOAuthInstance(authenticationRequest);
         }
-
-        return new Oauth2(authenticationRequest, mockWebRequest, jwsBuilder);
+        Oauth2 oauth2 = new Oauth2(authenticationRequest, mockWebRequest, jwsBuilder);
+        oauth2.setGenericOpenIDConnectProvider(authenticationRequest.getGenericOpenIDConnectProvider());
+        return oauth2;
     }
 
     private Map<String, List<String>> getHeader(String key, String value) {
