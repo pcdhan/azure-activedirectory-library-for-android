@@ -95,6 +95,8 @@ class AuthenticationRequest implements Serializable {
 
     private String mAssertionType;
 
+    private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
+
     /**
      * Developer can use acquireToken(with loginhint) or acquireTokenSilent(with
      * userid), so this sets the type of the request.
@@ -397,6 +399,14 @@ class AuthenticationRequest implements Serializable {
 
     public boolean getSkipCache() {
         return mSkipCache;
+    }
+
+    public GenericOpenIDConnectProvider getGenericOpenIDConnectProvider() {
+        return genericOpenIDConnectProvider;
+    }
+
+    public void setGenericOpenIDConnectProvider(GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+        this.genericOpenIDConnectProvider = genericOpenIDConnectProvider;
     }
 
     /**

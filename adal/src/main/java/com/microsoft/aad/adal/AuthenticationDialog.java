@@ -162,6 +162,7 @@ class AuthenticationDialog {
 
                 try {
                     Oauth2 oauth = new Oauth2(mRequest);
+                    oauth.setGenericOpenIDConnectProvider(mRequest.getGenericOpenIDConnectProvider());
                     final String startUrl = oauth.getCodeRequestUrl();
                     final String stopRedirect = mRequest.getRedirectUri();
                     mWebView.setWebViewClient(new DialogWebViewClient(mContext, stopRedirect, mRequest));

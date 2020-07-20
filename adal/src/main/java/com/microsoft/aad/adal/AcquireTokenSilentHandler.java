@@ -121,7 +121,7 @@ class AcquireTokenSilentHandler {
     AuthenticationResult getAccessTokenUsingAssertion() throws AuthenticationException {
         final String methodName = ":getAccessTokenUsingAssertion";
         final AuthenticationResult result = acquireTokenWithAssertion();
-        
+
         if (result != null && !StringExtensions.isNullOrBlank(result.getAccessToken())) {
             try {
                 mTokenCacheAccessor.updateTokenCache(mAuthRequest, result);
@@ -153,7 +153,7 @@ class AcquireTokenSilentHandler {
         try {
             final JWSBuilder jwsBuilder = new JWSBuilder();
             final Oauth2 oauthRequest = new Oauth2(mAuthRequest, mWebRequestHandler, jwsBuilder);
-
+            oauthRequest.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
             result = oauthRequest.refreshTokenUsingAssertion(samlAssertion, assertionType);
             if (result != null && StringExtensions.isNullOrBlank(result.getRefreshToken())) {
                 Logger.w(TAG + methodName, "Refresh token is not returned or empty");
@@ -187,13 +187,14 @@ class AcquireTokenSilentHandler {
         Logger.v(TAG + methodName, "Try to get new access token with the found refresh token.",
                 mAuthRequest.getLogInfo(), null);
 
-        // Check if network is available, if not throw exception. 
+        // Check if network is available, if not throw exception.
         HttpUtil.throwIfNetworkNotAvailable(mContext);
 
         final AuthenticationResult result;
         try {
             final JWSBuilder jwsBuilder = new JWSBuilder();
             final Oauth2 oauthRequest = new Oauth2(mAuthRequest, mWebRequestHandler, jwsBuilder);
+            oauthRequest.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
             result = oauthRequest.refreshToken(refreshToken);
             if (result != null && StringExtensions.isNullOrBlank(result.getRefreshToken())) {
                 Logger.w(TAG + methodName, "Refresh token is not returned or empty");
@@ -435,3 +436,4 @@ class AcquireTokenSilentHandler {
         return result != null && !StringExtensions.isNullOrBlank(result.getErrorCode());
     }
 }
+

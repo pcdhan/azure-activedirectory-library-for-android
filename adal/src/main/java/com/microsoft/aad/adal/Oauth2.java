@@ -49,6 +49,7 @@ import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -93,11 +94,15 @@ class Oauth2 {
 
     private String mClientVersion = "";
 
+    private static final String UTF8="UTF-8";
+
+    private  GenericOpenIDConnectProvider genericOpenIDConnectProvider;
+
     Oauth2(@NonNull final AuthenticationRequest request) {
         mRequest = request;
         mWebRequestHandler = null;
         mJWSBuilder = null;
-        setTokenEndpoint(mRequest.getAuthority() + DEFAULT_TOKEN_ENDPOINT);
+        //setTokenEndpoint();
     }
 
     Oauth2(@NonNull final AuthenticationRequest request,
@@ -105,7 +110,7 @@ class Oauth2 {
         mRequest = request;
         mWebRequestHandler = webRequestHandler;
         mJWSBuilder = null;
-        setTokenEndpoint(mRequest.getAuthority() + DEFAULT_TOKEN_ENDPOINT);
+        //setTokenEndpoint();
     }
 
     Oauth2(@NonNull final AuthenticationRequest request,
@@ -114,7 +119,7 @@ class Oauth2 {
         mRequest = request;
         mWebRequestHandler = webRequestHandler;
         mJWSBuilder = jwsMessageBuilder;
-        setTokenEndpoint(mRequest.getAuthority() + DEFAULT_TOKEN_ENDPOINT);
+        //setTokenEndpoint();
     }
 
     public void setClientVersion(String version) {
@@ -124,16 +129,24 @@ class Oauth2 {
         }
     }
 
+    public GenericOpenIDConnectProvider getGenericOpenIDConnectProvider() {
+        return genericOpenIDConnectProvider;
+    }
+
+    public void setGenericOpenIDConnectProvider(GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+        this.genericOpenIDConnectProvider = genericOpenIDConnectProvider;
+    }
+
     public void setBrokerClientVersion(String version) {
         mBrokerClientVersion = version;
     }
 
     public String getAuthorizationEndpoint() {
-        return mRequest.getAuthority() + DEFAULT_AUTHORIZE_ENDPOINT;
+        return genericOpenIDConnectProvider.getAuthorizationURL();
     }
 
     public String getTokenEndpoint() {
-        return mTokenEndpoint;
+        return genericOpenIDConnectProvider.getTokenURL();
     }
 
     public String getAuthorizationEndpointQueryParameters() throws UnsupportedEncodingException {
@@ -150,6 +163,12 @@ class Oauth2 {
                         URLEncoder.encode(mRequest.getRedirectUri(),
                                 AuthenticationConstants.ENCODING_UTF8))
                 .appendQueryParameter(AuthenticationConstants.OAuth2.STATE, encodeProtocolState());
+
+        //GenericOpenIDConnectProvider
+        queryParameter.appendQueryParameter("code_challenge",genericOpenIDConnectProvider.getCodeChallenge());
+        queryParameter.appendQueryParameter("code_challenge_method","S256");
+        queryParameter.appendQueryParameter("scope",URLEncoder.encode(genericOpenIDConnectProvider.getScope(),
+                AuthenticationConstants.ENCODING_UTF8));
 
         if (!StringExtensions.isNullOrBlank(mRequest.getLoginHint())) {
             queryParameter.appendQueryParameter(AuthenticationConstants.AAD.LOGIN_HINT,
@@ -283,6 +302,9 @@ class Oauth2 {
             message = String.format(STRING_FORMAT_QUERY_PARAM, message, AuthenticationConstants.AAD.APP_VERSION,
                     StringExtensions.urlFormEncode(mRequest.getAppVersion()));
         }
+
+        //GenericOpenIDConnect
+        message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
         return message;
 
     }
@@ -316,7 +338,7 @@ class Oauth2 {
                 StringExtensions.urlFormEncode(assertionType),
 
                 com.microsoft.aad.adal.AuthenticationConstants.OAuth2.ASSERTION,
-                StringExtensions.urlFormEncode(Base64.encodeToString(assertion.getBytes("UTF-8"), Base64.NO_WRAP)),
+                StringExtensions.urlFormEncode(Base64.encodeToString(assertion.getBytes(UTF8), Base64.NO_WRAP)),
 
                 AuthenticationConstants.OAuth2.CLIENT_ID,
                 StringExtensions.urlFormEncode(mRequest.getClientId()),
@@ -369,6 +391,7 @@ class Oauth2 {
             message = String.format(STRING_FORMAT_QUERY_PARAM, message, AuthenticationConstants.AAD.APP_VERSION,
                     StringExtensions.urlFormEncode(mRequest.getAppVersion()));
         }
+        message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
         return message;
     }
 
@@ -438,7 +461,8 @@ class Oauth2 {
                         .path(authorityUrl.getPath())
                         .build().toString();
 
-                setTokenEndpoint(newAuthorityUrlString + DEFAULT_TOKEN_ENDPOINT);
+                //setTokenEndpoint(newAuthorityUrlString + DEFAULT_TOKEN_ENDPOINT);
+                setTokenEndpoint();
                 result.setAuthority(newAuthorityUrlString);
             }
         } else if (response.containsKey(AuthenticationConstants.OAuth2.ACCESS_TOKEN)) {
@@ -540,6 +564,15 @@ class Oauth2 {
             throws JSONException {
         final JSONObject jsonObject = new JSONObject(jsonStr);
 
+        //GenericOpenIDConnectProvider
+        if(!jsonObject.has("client_info")) {
+            String uid = "10";
+            String utid = "20";
+            String claims = "{uid:\"" + uid + "\",\"utid\":\"" + utid + "\"}";
+            String clinetInfo = new String(Base64.encode(claims.getBytes(
+                    Charset.forName(UTF8)), Base64.NO_PADDING | Base64.NO_WRAP | Base64.URL_SAFE));
+            jsonObject.put("client_info", clinetInfo);
+        }
         final Iterator<?> i = jsonObject.keys();
 
         while (i.hasNext()) {
@@ -859,7 +892,7 @@ class Oauth2 {
         if (!StringExtensions.isNullOrBlank(encodedState)) {
             byte[] stateBytes = Base64.decode(encodedState, Base64.NO_PADDING | Base64.URL_SAFE);
 
-            return new String(stateBytes, "UTF-8");
+            return new String(stateBytes, UTF8);
         }
 
         return null;
@@ -867,7 +900,7 @@ class Oauth2 {
 
     public String encodeProtocolState() throws UnsupportedEncodingException {
         String state = String.format("a=%s&r=%s", mRequest.getAuthority(), mRequest.getResource());
-        return Base64.encodeToString(state.getBytes("UTF-8"), Base64.NO_PADDING | Base64.URL_SAFE);
+        return Base64.encodeToString(state.getBytes(UTF8), Base64.NO_PADDING | Base64.URL_SAFE);
     }
 
     private Map<String, String> getRequestHeaders() {
@@ -1008,5 +1041,8 @@ class Oauth2 {
 
     public void setTokenEndpoint(final String tokenEndpoint) {
         mTokenEndpoint = tokenEndpoint;
+    }
+    public void setTokenEndpoint(){
+        mTokenEndpoint = genericOpenIDConnectProvider.getTokenURL();
     }
 }

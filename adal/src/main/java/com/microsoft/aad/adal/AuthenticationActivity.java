@@ -256,7 +256,9 @@ public class AuthenticationActivity extends DualScreenActivity {
 
         try {
             final Oauth2 oauth = new Oauth2(mAuthRequest);
+            oauth.setGenericOpenIDConnectProvider(mAuthRequest.getGenericOpenIDConnectProvider());
             mStartUrl = oauth.getCodeRequestUrl();
+
         } catch (UnsupportedEncodingException e) {
             Logger.error(TAG + methodName, "Encoding format is not supported. ", e);
 
@@ -1003,6 +1005,7 @@ public class AuthenticationActivity extends DualScreenActivity {
         @Override
         protected TokenTaskResult doInBackground(final String... urlItems) {
             final Oauth2 oauthRequest = new Oauth2(mRequest, mRequestHandler, mJWSBuilder);
+            oauthRequest.setGenericOpenIDConnectProvider(mRequest.getGenericOpenIDConnectProvider());
             final TokenTaskResult result = new TokenTaskResult();
 
             try {

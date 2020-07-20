@@ -59,6 +59,7 @@ public class WebviewHelper {
         mRequestIntent = requestIntent;
         mRequest = getAuthenticationRequestFromIntent(mRequestIntent);
         mOauth = new Oauth2(mRequest);
+        mOauth.setGenericOpenIDConnectProvider(mRequest.getGenericOpenIDConnectProvider());
     }
 
     /**

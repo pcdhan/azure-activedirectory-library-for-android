@@ -129,6 +129,7 @@ dependencies {
     // Dependencies
     implementation "androidx.appcompat:appcompat:$rootProject.ext.appCompatVersion"
     implementation "com.google.code.gson:gson:$rootProject.ext.gsonVersion"
+    //implementation "com.google.code.gson:gson:2.7"
     implementation "androidx.annotation:annotation:$rootProject.ext.annotationVersion"
     implementation "androidx.legacy:legacy-support-v4:$rootProject.ext.legacySupportV4Version"
     implementation "com.nimbusds:nimbus-jose-jwt:$rootProject.ext.nimbusVersion"
@@ -330,7 +331,8 @@ task pmd(type: Pmd) {
     description 'Run pmd'
     group 'verification'
 
-    ruleSets = ["java-basic", "java-braces", "java-strings", "java-unusedcode"]
+    //ruleSets = ["java-basic", "java-braces", "java-strings", "java-unusedcode"]
+    ruleSets = ["java-basic", "java-braces", "java-strings"]
     source = fileTree('src/main/java')
 
     reports {
@@ -361,7 +363,7 @@ task checkstyle(type: Checkstyle) {
 tasks.whenTaskAdded { task ->
     if (task.name == 'assembleDebug' || task.name == 'assembleRelease') {
         task.dependsOn 'checkstyle', 'pmd', 'lint'
-        task.finalizedBy 'findbugs'
+        //task.finalizedBy 'findbugs'
     }
 }
 

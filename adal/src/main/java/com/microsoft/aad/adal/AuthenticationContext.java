@@ -100,6 +100,30 @@ public class AuthenticationContext {
      */
     private UUID mRequestCorrelationId = null;
 
+
+    private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
+
+
+    /**
+     * Constructs context to use with known GenericOpenIDConnectProvider. It uses
+     * default cache that stores encrypted tokens.
+     *
+     * @param appContext        It needs to have handle to the {@link Context} to use
+     *                          the SharedPreferencesFileManager as a Default cache storage. It does not
+     *                          need to be activity.
+     * @param genericOpenIDConnectProvider         GenericOpenIDConnectProvider
+     *
+     */
+    public AuthenticationContext(Context appContext, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+        // Fixes are required for SDK 16-18
+        // The fixes need to be applied before any use of Java Cryptography
+        // Architecture primitives. Default cache uses encryption
+        PRNGFixes.apply();
+        this.genericOpenIDConnectProvider=genericOpenIDConnectProvider;
+        //Validate an authority
+        boolean validateAuthority = false;
+        initialize(appContext, genericOpenIDConnectProvider.getAuthority(), new DefaultTokenCacheStore(appContext), validateAuthority, true);
+    }
     /**
      * Constructs context to use with known authority to get the token. It uses
      * default cache that stores encrypted tokens.
@@ -257,6 +281,24 @@ public class AuthenticationContext {
         Logger.v(TAG + methodName, "Get expected redirect Uri. ", "Broker redirectUri:" + redirectUri + " packagename:" + packageName
                 + " signatureDigest:" + signatureDigest, null);
         return redirectUri;
+    }
+
+    /**
+     * acquireToken will start interactive flow if needed. It checks the cache
+     * to return existing result if not expired. It tries to use refresh token
+     * if available. If it fails to get token with refresh token, it will remove
+     * this refresh token from cache and start authentication.
+     *
+     * @param activity    required to launch authentication activity.
+     * @param genericOpenIDConnectProvider All config wrapped in obbject
+     */
+    public void acquireToken(Activity activity,AuthenticationCallback<AuthenticationResult> authenticationCallback, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+
+        acquireToken(genericOpenIDConnectProvider.getResource(), genericOpenIDConnectProvider.getClientID(),
+                genericOpenIDConnectProvider.getRedirectURL(), genericOpenIDConnectProvider.getLoginHint(),
+                PromptBehavior.Auto, null,
+                null, authenticationCallback,
+                EventStrings.ACQUIRE_TOKEN_1, wrapActivity(activity), false);
     }
 
     /**
@@ -560,6 +602,7 @@ public class AuthenticationContext {
             request.setTelemetryRequestId(requestId);
             setAppInfoToRequest(request);
             request.setClientCapabilities(mClientCapabilites);
+            request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
 
             if (!StringExtensions.isNullOrBlank(loginHint)) {
                 apiEvent.setLoginHint(loginHint);
@@ -848,7 +891,24 @@ public class AuthenticationContext {
                 });
         return futureTask;
     }
-
+    /**
+     * The function will first look at the cache and automatically checks for
+     * the token expiration. Additionally, if no suitable access token is found
+     * in the cache, but refresh token is available, the function will use the
+     * refresh token automatically. This method will not show UI for the user.
+     * If prompt is needed, the method will return an exception
+     *
+     * @param userId   UserId obtained from {@link UserInfo} inside
+     *                 {@link AuthenticationResult}
+     * @param callback required {@link AuthenticationCallback} object for async
+     *                 call.
+     * @param genericOpenIDConnectProvider required {@link GenericOpenIDConnectProvider} object
+     */
+    public void acquireTokenSilentAsync(String userId,
+                                        AuthenticationCallback<AuthenticationResult> callback,GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+        acquireTokenSilentAsync(null, null, genericOpenIDConnectProvider.getResource(), genericOpenIDConnectProvider.getClientID(), userId, UserIdentifierType.UniqueId,
+                false, null, EventStrings.ACQUIRE_TOKEN_SILENT_ASYNC, callback);
+    }
     /**
      * The function will first look at the cache and automatically checks for
      * the token expiration. Additionally, if no suitable access token is found
@@ -1413,6 +1473,9 @@ public class AuthenticationContext {
         return new AcquireTokenRequest(mContext, this, apiEvent);
     }
 
+    public static String extractAuthorityFromToken(String url){
+        return extractAuthority(url);
+    }
     private static String extractAuthority(String authority) {
         if (!StringExtensions.isNullOrBlank(authority)) {
 
