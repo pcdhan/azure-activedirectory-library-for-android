@@ -412,41 +412,43 @@ public class AuthenticationContext {
         listToBeExtracted.add("tokenURL");
         listToBeExtracted.add("scope");
         //re-constrcut extra query params
-        extraQueryParameters = filterAndGetString(queryPairs,listToBeExtracted);
+        extraQueryParameters = filterAndGetString(queryPairs, listToBeExtracted);
         acquireToken(resource, clientId, redirectUri, loginHint, prompt, extraQueryParameters,
                 null, callback, EventStrings.ACQUIRE_TOKEN_5, wrapActivity(activity), false);
     }
 
-    private Map<String,String> extractParams(String queryParams) {
-            Map<String, String> queryPairs = new LinkedHashMap<String, String>();
+    private Map<String, String> extractParams(String queryParams) {
+        Map<String, String> queryPairs = new LinkedHashMap<String, String>();
+        try {
+            queryParams = URLDecoder.decode(queryParams, "UTF-8");
             String[] pairs = queryParams.split("&");
             for (String pair : pairs) {
                 int idx = pair.indexOf('=');
-                try {
-                    queryPairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
-                }catch(UnsupportedEncodingException e){
-                    new AuthenticationException(ADALError.DECODING_QUERY_PARAMS_FAILED, "GenericOpenIDConnectProvider extract query params failed", e);
-                }
+                queryPairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
             }
-            return queryPairs;
+        } catch (UnsupportedEncodingException e) {
+            new AuthenticationException(ADALError.DECODING_QUERY_PARAMS_FAILED, "GenericOpenIDConnectProvider extract query params failed", e);
+        }
+        return queryPairs;
     }
 
-    private String filterAndGetString(Map<String,String> queryMap, List<String> filterList) {
+    private String filterAndGetString(Map<String, String> queryMap, List<String> filterList) {
         Iterator<String> listIterator = filterList.iterator();
-        while(listIterator.hasNext()){
+        while (listIterator.hasNext()) {
             String key = listIterator.next();
             queryMap.remove(key);
         }
         Iterator<String> mapIterator = queryMap.keySet().iterator();
         StringBuilder builder = new StringBuilder();
-        while(mapIterator.hasNext()){
+        while (mapIterator.hasNext()) {
             String mapKey = mapIterator.next();
             builder.append(mapKey).append('=').append(queryMap.get(mapKey)).append('&');
         }
         String filter = builder.toString();
         //remove last &
-        return filter.substring(0,filter.toCharArray().length-1);
+        return filter.substring(0, filter.toCharArray().length - 1);
     }
+
     /**
      * acquireToken will start an interactive auth flow to acquire new tokens
      * with the requested claims. Bypasses token cache if promptbehavior is not AUTO or claims are passed.
@@ -715,7 +717,6 @@ public class AuthenticationContext {
     }
 
     /**
-     *
      * This function tries to acquire token silently. It will first look at the cache
      * and automatically checks for the token expiration. Additionally, if no suitable
      * access token is found in the cache, but refresh token is available, the function
@@ -724,12 +725,12 @@ public class AuthenticationContext {
      * This method will not show UI for the user. If prompt is needed, the method
      * will return an exception
      *
-     * @param assertion the actual saml assertion
+     * @param assertion     the actual saml assertion
      * @param assertionType version of saml assertion being used
-     * @param resource required resource identifier.
-     * @param clientId required client identifier.
-     * @param userId   UserID obtained from
-     *                 {@link AuthenticationResult #getUserInfo()}
+     * @param resource      required resource identifier.
+     * @param clientId      required client identifier.
+     * @param userId        UserID obtained from
+     *                      {@link AuthenticationResult #getUserInfo()}
      * @return A {@link Future} object representing the
      * {@link AuthenticationResult} of the call. It contains Access
      * Token,the Access Token's expiration time, Refresh token, and
@@ -907,6 +908,7 @@ public class AuthenticationContext {
                 });
         return futureTask;
     }
+
     /**
      * The function will first look at the cache and automatically checks for
      * the token expiration. Additionally, if no suitable access token is found
@@ -914,17 +916,18 @@ public class AuthenticationContext {
      * refresh token automatically. This method will not show UI for the user.
      * If prompt is needed, the method will return an exception
      *
-     * @param userId   UserId obtained from {@link UserInfo} inside
-     *                 {@link AuthenticationResult}
-     * @param callback required {@link AuthenticationCallback} object for async
-     *                 call.
+     * @param userId                       UserId obtained from {@link UserInfo} inside
+     *                                     {@link AuthenticationResult}
+     * @param callback                     required {@link AuthenticationCallback} object for async
+     *                                     call.
      * @param genericOpenIDConnectProvider required {@link GenericOpenIDConnectProvider} object
      */
     public void acquireTokenSilentAsync(String userId,
-                                        AuthenticationCallback<AuthenticationResult> callback,GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
+                                        AuthenticationCallback<AuthenticationResult> callback, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
         acquireTokenSilentAsync(null, null, genericOpenIDConnectProvider.getResource(), genericOpenIDConnectProvider.getClientID(), userId, UserIdentifierType.UniqueId,
                 false, null, EventStrings.ACQUIRE_TOKEN_SILENT_ASYNC, callback);
     }
+
     /**
      * The function will first look at the cache and automatically checks for
      * the token expiration. Additionally, if no suitable access token is found
@@ -999,7 +1002,6 @@ public class AuthenticationContext {
     }
 
     /**
-     *
      * This function tries to acquire token silently. It will first look at the cache
      * and automatically checks for the token expiration. Additionally, if no suitable
      * access token is found in the cache, but refresh token is available, the function
@@ -1008,14 +1010,14 @@ public class AuthenticationContext {
      * This method will not show UI for the user. If prompt is needed, the method
      * will return an exception
      *
-     * @param assertion the actual saml assertion
+     * @param assertion     the actual saml assertion
      * @param assertionType version of saml assertion being used
-     * @param resource required resource identifier.
-     * @param clientId required client identifier.
-     * @param userId   UserID obtained from
-     *                 {@link AuthenticationResult #getUserInfo()}
-     * @param callback required {@link AuthenticationCallback} object for async
-     *                 call.
+     * @param resource      required resource identifier.
+     * @param clientId      required client identifier.
+     * @param userId        UserID obtained from
+     *                      {@link AuthenticationResult #getUserInfo()}
+     * @param callback      required {@link AuthenticationCallback} object for async
+     *                      call.
      */
     public void acquireTokenSilentAsyncWithAssertion(@NonNull final String assertion,
                                                      @NonNull final String assertionType,
@@ -1054,7 +1056,7 @@ public class AuthenticationContext {
                 apiEventString);
         apiEvent.setPromptBehavior(PromptBehavior.Auto.toString());
 
-        final AuthenticationRequest request = new AuthenticationRequest(assertion,assertionType, mAuthority, resource,
+        final AuthenticationRequest request = new AuthenticationRequest(assertion, assertionType, mAuthority, resource,
                 clientId, userId, getRequestCorrelationId(), getExtendedLifetimeEnabled(), forceRefresh, claims);
         request.setSilent(true);
         request.setPrompt(PromptBehavior.Auto);
@@ -1331,42 +1333,42 @@ public class AuthenticationContext {
      * @return merged claims with capabilities
      * @throws JSONException if input claims is an invalid JSON
      *
-     * <pre>
-     Sample input claim :
-        {
-            "userinfo": {
-                "given_name": {"essential": true},
-                "email": {"essential": true},
-            },
-            "id_token": {
-                "auth_time": {"essential": true},
-            }
-        }
-
-    Sample capabilities list : [CP1, CP2 CP3]
-
-    Output merged claims :
-        {
-            "userinfo": {
-                "given_name": {
-                    "essential": true
-                },
-                "email": {
-                    "essential": true
-                }
-            },
-            "id_token": {
-                "auth_time": {
-                    "essential": true
-                }
-            },
-            "access_token": {
-                "xms_cc": {
-                    "values": ["CP1", "CP2"]
-                }
-            }
-        }
-     * </pre>
+     *                       <pre>
+     *                       Sample input claim :
+     *                       {
+     *                       "userinfo": {
+     *                       "given_name": {"essential": true},
+     *                       "email": {"essential": true},
+     *                       },
+     *                       "id_token": {
+     *                       "auth_time": {"essential": true},
+     *                       }
+     *                       }
+     *
+     *                       Sample capabilities list : [CP1, CP2 CP3]
+     *
+     *                       Output merged claims :
+     *                       {
+     *                       "userinfo": {
+     *                       "given_name": {
+     *                       "essential": true
+     *                       },
+     *                       "email": {
+     *                       "essential": true
+     *                       }
+     *                       },
+     *                       "id_token": {
+     *                       "auth_time": {
+     *                       "essential": true
+     *                       }
+     *                       },
+     *                       "access_token": {
+     *                       "xms_cc": {
+     *                       "values": ["CP1", "CP2"]
+     *                       }
+     *                       }
+     *                       }
+     *                       </pre>
      */
     public static String mergeClaimsWithClientCapabilities(final String claims,
                                                            final List<String> clientCapabilities) {
@@ -1491,9 +1493,10 @@ public class AuthenticationContext {
         return new AcquireTokenRequest(mContext, this, apiEvent);
     }
 
-    public static String extractAuthorityFromToken(String url){
+    public static String extractAuthorityFromToken(String url) {
         return extractAuthority(url);
     }
+
     private static String extractAuthority(String authority) {
         if (!StringExtensions.isNullOrBlank(authority)) {
 
