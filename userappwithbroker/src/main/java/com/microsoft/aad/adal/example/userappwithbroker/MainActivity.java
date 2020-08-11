@@ -43,7 +43,6 @@ import com.microsoft.aad.adal.AuthenticationContext;
 import com.microsoft.aad.adal.AuthenticationException;
 import com.microsoft.aad.adal.AuthenticationResult;
 import com.microsoft.aad.adal.AuthenticationSettings;
-import com.microsoft.aad.adal.GenericOpenIDConnectProvider;
 import com.microsoft.aad.adal.IDispatcher;
 import com.microsoft.aad.adal.PromptBehavior;
 import com.microsoft.aad.adal.Telemetry;
@@ -98,8 +97,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private PromptBehavior mPromptBehavior;
 
     private RelativeLayout mContentMain;
-
-    private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,8 +180,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         new Thread(new Runnable() {
             @Override
             public void run() {
-                //String uId = getUserIdBasedOnUPN(requestOptions.getLoginHint(), requestOptions.getAuthority());
-                String uId = getUserIdBasedOnUPN(requestOptions.getLoginHint());
+                String uId = getUserIdBasedOnUPN(requestOptions.getLoginHint(), requestOptions.getAuthority());
+
                 if (TextUtils.isEmpty(uId)) {
                     try {
                         final UserInfo[] userInfos = mAuthContext.getBrokerUsers();
@@ -201,7 +198,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
 
                 if (!TextUtils.isEmpty(uId)) {
-                    callAcquireTokenSilent(uId);
+                    callAcquireTokenSilent(requestOptions.getDataProfile().getText(),
+                            uId,
+                            requestOptions.getClientId().getText());
                 } else {
                     showMessage("No uId matching the provided upn, cannot proceed with silent call");
                 }
@@ -233,41 +232,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }).start();
 
     }
-    /**
+
     void prepareRequestParameters(final AcquireTokenFragment.RequestOptions requestOptions) {
         mRequestAuthority = requestOptions.getAuthority();
         mAuthority = mRequestAuthority;
-        mAuthContext = new AuthenticationContext(mApplicationContext, mAuthority, true);
-
-        //TODO: We can add UX to set or not set this
-        mAuthContext.setClientCapabilites(new ArrayList<>(Arrays.asList("CP1")));
-        AuthenticationSettings.INSTANCE.setUseBroker(requestOptions.getUseBroker());
-        mLoginhint = requestOptions.getLoginHint();
-        mPromptBehavior = requestOptions.getBehavior();
-    }
-    */
-
-    /**
-     * GenericOpenIDConnectProvider
-     * @param requestOptions
-     */
-    void prepareRequestParameters(final AcquireTokenFragment.RequestOptions requestOptions) {
-        genericOpenIDConnectProvider =
-                new GenericOpenIDConnectProvider.Builder()
-                        .setClientID("")
-                        .setAuthorizationURL("")
-                        .setTokenURL("")
-                        .setRedirectURL("")
-                        .setScope("openid profile email offline_access")
-                        .setResource("e631464b-82f4-490d-9195-c1cb0785e82d") //placeholder
-                        .setPrompt(requestOptions.getBehavior())
-                        .setLoginHint(requestOptions.getLoginHint())
-                        .setExtraQp(requestOptions.getExtraQp())
-                        .build();
-
-        mRequestAuthority = requestOptions.getAuthority();
-        mAuthority = mRequestAuthority;
-        mAuthContext = new AuthenticationContext(mApplicationContext, genericOpenIDConnectProvider);
+        mAuthContext = new AuthenticationContext(mApplicationContext, mAuthority, false);
 
         //TODO: We can add UX to set or not set this
         mAuthContext.setClientCapabilites(new ArrayList<>(Arrays.asList("CP1")));
@@ -355,34 +324,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void callAcquireTokenWithResource(final String resource, PromptBehavior prompt, final String loginHint,
                                               final String clientId, final String redirectUri, final String extraQp) {
-        /*
         mAuthContext.acquireToken(MainActivity.this, resource, clientId, redirectUri, loginHint,
-                prompt, extraQp, getAuthenticationCallback());
+                prompt, extraQp, new AuthenticationCallback<AuthenticationResult>() {
 
-         */
-        mAuthContext.acquireToken(MainActivity.this,getAuthenticationCallback(),genericOpenIDConnectProvider);
-    }
+                    @Override
+                    public void onSuccess(AuthenticationResult authenticationResult) {
+                        mAuthResult = authenticationResult;
+                        showMessage("Response from broker: " + authenticationResult.getAccessToken());
 
+                        // Update this user for next call
+                        if (authenticationResult.getUserInfo() != null) {
+                            saveUserIdFromAuthenticationResult(authenticationResult);
+                        }
+                    }
 
-    private AuthenticationCallback<AuthenticationResult> getAuthenticationCallback(){
-        return  new AuthenticationCallback<AuthenticationResult>(){
-
-            @Override
-            public void onSuccess(AuthenticationResult authenticationResult) {
-                mAuthResult = authenticationResult;
-                showMessage("Response from broker: " + authenticationResult.getAccessToken());
-
-                // Update this user for next call
-                if (authenticationResult.getUserInfo() != null) {
-                    saveUserIdFromAuthenticationResult(authenticationResult);
-                }
-            }
-
-            @Override
-            public void onError(Exception exc) {
-                showMessage("MainActivity userapp:" + exc.getMessage());
-            }
-        };
+                    @Override
+                    public void onError(Exception exc) {
+                        showMessage("MainActivity userapp:" + exc.getMessage());
+                    }
+                });
     }
 
     /**
@@ -433,18 +393,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * GenericOpenIDConnectProvider - getUserIdBasedOnUPN
-     *
-     */
-    private String getUserIdBasedOnUPN(final String upn) {
-        mSharedPreference = getSharedPreferences(SHARED_PREFERENCE_STORE_USER_UNIQUEID, MODE_PRIVATE);
-        return mSharedPreference.getString((upn.trim() + ":" + genericOpenIDConnectProvider.getAuthority() + ":userId").toLowerCase(), null);
-    }
-
-    /**
      * Silent acquire token call. Requires to pass the user unique id. If user unique id is not passed,
      * silent call to broker will be skipped.
-     *
      */
     private void callAcquireTokenSilent(final String resource, final String userUniqueId, final String clientId) {
         mAuthContext.acquireTokenSilentAsync(resource, clientId, userUniqueId, new AuthenticationCallback<AuthenticationResult>() {
@@ -463,21 +413,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * GenericOpenIDConnectProvider - callAcquireTokenSilent
-     *
-     */
-    private void callAcquireTokenSilent(final String userUniqueId) {
-        mAuthContext.acquireTokenSilentAsync(userUniqueId, getAuthenticationCallback(),genericOpenIDConnectProvider);
-    }
-
-
-    /**
      * Silent acquire token call. Requires to pass the user unique id. If user unique id is not passed,
      * silent call to broker will be skipped. If the assertion is passed then token acquisition using
      * assertion will be called.
      */
     private void callAcquireTokenSilentWithAssertion(final String assertion, final String version, final String resource,
-                                        final String userUniqueId, final String clientId) {
+                                                     final String userUniqueId, final String clientId) {
         String messageException = "";
 
         try {

@@ -24,36 +24,22 @@ public class GenericOpenIDConnectProvider implements Serializable {
     private String authorizationURL;
     private String clientID;
     private String redirectURL;
-    private String codeChallenge;
-    private String codeVerifier;
     private String extraParamsInTokenURL;
     private String resource;
     private String scope;
-
-    //support exisitng method calls
     private String loginHint;
     private PromptBehavior prompt;
     private String extraQp;
+    private String authority;
 
-    //avoid direct instance creation
-    private GenericOpenIDConnectProvider() { }
+    //PKCE
+    PkceChallenge pkceChallenge = PkceChallenge.newPkceChallenge();
 
-    private GenericOpenIDConnectProvider(Builder builder) {
-        this.tokenURL = builder.tokenURL;
-        this.authorizationURL = builder.authorizationURL;
-        this.clientID=builder.clientID;
-        this.redirectURL=builder.redirectURL;
-        this.codeChallenge=builder.codeChallenge;
-        this.codeVerifier=builder.codeVerifier;
-        this.extraParamsInTokenURL=builder.extraParamsInTokenURL;
-        this.resource=builder.resource;
-        this.scope=builder.scope;
-        this.loginHint=builder.loginHint;
-        this.prompt=builder.prompt;
-        this.extraQp=builder.extraQp;
+    public GenericOpenIDConnectProvider() {}
+
+    public String getTokenURL() {
+        return tokenURL;
     }
-
-    public String getTokenURL() { return tokenURL; }
     public String getAuthorizationURL() {
         return authorizationURL;
     }
@@ -67,11 +53,11 @@ public class GenericOpenIDConnectProvider implements Serializable {
     }
 
     public String getCodeChallenge() {
-        return codeChallenge;
+        return pkceChallenge.getCodeChallenge();
     }
 
     public String getCodeVerifier() {
-        return codeVerifier;
+        return pkceChallenge.getCodeVerifier();
     }
 
     public String getExtraParamsInTokenURL() {
@@ -102,104 +88,47 @@ public class GenericOpenIDConnectProvider implements Serializable {
         return extraQp;
     }
 
-    //Get authority of a URL
-    public String getAuthority(){
-        return AuthenticationContext.extractAuthorityFromToken(tokenURL);
+    public void setTokenURL(String tokenURL) {
+        this.tokenURL = tokenURL;
     }
 
-    public static class Builder {
-        private String tokenURL;
-        private String authorizationURL;
-        private String clientID;
-        private String redirectURL;
-        private String codeChallenge;
-        private String codeVerifier;
-        private String extraParamsInTokenURL;
-        private String resource;
-        private String scope;
-        PkceChallenge pkceChallenge = PkceChallenge.newPkceChallenge();
+    public void setAuthorizationURL(String authorizationURL) {
+        this.authorizationURL = authorizationURL;
+    }
 
-        //support- exisitng method calls
-        private String loginHint;
-        private PromptBehavior prompt;
-        private String extraQp;
+    public void setClientID(String clientID) {
+        this.clientID = clientID;
+    }
 
-        public Builder setTokenURL(String tokenURL) {
-            this.tokenURL = tokenURL;
-            return this;
-        }
+    public void setRedirectURL(String redirectURL) {
+        this.redirectURL = redirectURL;
+    }
 
-        public Builder setAuthorizationURL(String authorizationURL) {
-            this.authorizationURL = authorizationURL;
-            return this;
-        }
+    public void setExtraParamsInTokenURL(String extraParamsInTokenURL) {
+        this.extraParamsInTokenURL = extraParamsInTokenURL;
+    }
 
-        public Builder setClientID(String clientID) {
-            this.clientID = clientID;
-            return this;
-        }
+    public void setResource(String resource) {
+        this.resource = resource;
+    }
 
-        public Builder setRedirectURL(String redirectURL) {
-            this.redirectURL = redirectURL;
-            return this;
-        }
+    public void setLoginHint(String loginHint) {
+        this.loginHint = loginHint;
+    }
 
-        public Builder setCodeChallenge(String codeChallenge) {
-            this.codeChallenge = codeChallenge;
-            return this;
-        }
+    public void setPrompt(PromptBehavior prompt) {
+        this.prompt = prompt;
+    }
 
-        public Builder setCodeVerifier(String codeVerifier) {
-            this.codeVerifier = codeVerifier;
-            return this;
-        }
-        public Builder setResource(String resource) {
-            this.resource = resource;
-            return this;
-        }
-        public Builder setScope(String scope) {
-            this.scope = scope;
-            return this;
-        }
+    public void setExtraQp(String extraQp) {
+        this.extraQp = extraQp;
+    }
 
-        public Builder setExtraParamsInTokenURL(String extraParamsInTokenURL) {
-            try {
-                this.extraParamsInTokenURL = StringExtensions.urlFormEncode(extraParamsInTokenURL);
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException("Unable to encode extra parameters token URL: "+e.getMessage());
-            }
-            return this;
-        }
+    public String getAuthority() {
+        return authority;
+    }
 
-        public Builder setLoginHint(String loginHint) {
-            this.loginHint = loginHint;
-            return this;
-        }
-
-        public Builder setPrompt(PromptBehavior prompt) {
-            this.prompt = prompt;
-            return this;
-        }
-
-        public Builder setExtraQp(String extraQp) {
-            this.extraQp = extraQp;
-            return this;
-        }
-
-        private String generateCodeVerifier() {
-            return "5okMxn-s4_kcc_6vS6AF6WHck1NbqluNJ2nG67qefXo";
-            //return pkceChallenge.getCodeVerifier();
-        }
-
-        private String codeChallenge() {
-            return  "K1rG1TnHES3yMviuGA7y6m0r7CvLgaSblcJub_S5zbA";
-            // return pkceChallenge.getCodeChallenge();
-        }
-
-        public GenericOpenIDConnectProvider build() {
-            this.setCodeVerifier(generateCodeVerifier());
-            this.setCodeChallenge(codeChallenge());
-            return new GenericOpenIDConnectProvider(this);
-        }
+    public void setAuthority(String authority) {
+        this.authority = authority;
     }
 }

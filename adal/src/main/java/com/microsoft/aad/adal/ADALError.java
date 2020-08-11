@@ -653,7 +653,13 @@ public enum ADALError {
     /**
      * Device is required to be managed.
      */
-    MDM_REQUIRED("Device needs to be managed to access the resource");
+    MDM_REQUIRED("Device needs to be managed to access the resource"),
+
+
+    /**
+     * Decoding Query Params Failed.
+     */
+    DECODING_QUERY_PARAMS_FAILED("Failed to decode supplied query parameters");
 
     private String mDescription;
 

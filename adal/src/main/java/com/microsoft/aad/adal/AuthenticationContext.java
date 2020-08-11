@@ -38,6 +38,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.annotation.Nullable;
@@ -53,9 +54,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -103,27 +112,6 @@ public class AuthenticationContext {
 
     private GenericOpenIDConnectProvider genericOpenIDConnectProvider;
 
-
-    /**
-     * Constructs context to use with known GenericOpenIDConnectProvider. It uses
-     * default cache that stores encrypted tokens.
-     *
-     * @param appContext        It needs to have handle to the {@link Context} to use
-     *                          the SharedPreferencesFileManager as a Default cache storage. It does not
-     *                          need to be activity.
-     * @param genericOpenIDConnectProvider         GenericOpenIDConnectProvider
-     *
-     */
-    public AuthenticationContext(Context appContext, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
-        // Fixes are required for SDK 16-18
-        // The fixes need to be applied before any use of Java Cryptography
-        // Architecture primitives. Default cache uses encryption
-        PRNGFixes.apply();
-        this.genericOpenIDConnectProvider=genericOpenIDConnectProvider;
-        //Validate an authority
-        boolean validateAuthority = false;
-        initialize(appContext, genericOpenIDConnectProvider.getAuthority(), new DefaultTokenCacheStore(appContext), validateAuthority, true);
-    }
     /**
      * Constructs context to use with known authority to get the token. It uses
      * default cache that stores encrypted tokens.
@@ -139,6 +127,7 @@ public class AuthenticationContext {
         // The fixes need to be applied before any use of Java Cryptography
         // Architecture primitives. Default cache uses encryption
         PRNGFixes.apply();
+        genericOpenIDConnectProvider = new GenericOpenIDConnectProvider();
         initialize(appContext, authority, new DefaultTokenCacheStore(appContext), validateAuthority, true);
     }
 
@@ -290,24 +279,6 @@ public class AuthenticationContext {
      * this refresh token from cache and start authentication.
      *
      * @param activity    required to launch authentication activity.
-     * @param genericOpenIDConnectProvider All config wrapped in obbject
-     */
-    public void acquireToken(Activity activity,AuthenticationCallback<AuthenticationResult> authenticationCallback, GenericOpenIDConnectProvider genericOpenIDConnectProvider) {
-
-        acquireToken(genericOpenIDConnectProvider.getResource(), genericOpenIDConnectProvider.getClientID(),
-                genericOpenIDConnectProvider.getRedirectURL(), genericOpenIDConnectProvider.getLoginHint(),
-                PromptBehavior.Auto, null,
-                null, authenticationCallback,
-                EventStrings.ACQUIRE_TOKEN_1, wrapActivity(activity), false);
-    }
-
-    /**
-     * acquireToken will start interactive flow if needed. It checks the cache
-     * to return existing result if not expired. It tries to use refresh token
-     * if available. If it fails to get token with refresh token, it will remove
-     * this refresh token from cache and start authentication.
-     *
-     * @param activity    required to launch authentication activity.
      * @param resource    required resource identifier.
      * @param clientId    required client identifier
      * @param redirectUri Optional. It will use package name info if not
@@ -426,11 +397,56 @@ public class AuthenticationContext {
     public void acquireToken(Activity activity, String resource, String clientId,
                              @Nullable String redirectUri, @Nullable String loginHint, @Nullable PromptBehavior prompt,
                              @Nullable String extraQueryParameters, AuthenticationCallback<AuthenticationResult> callback) {
-
+        Map<String, String> queryPairs = extractParams(extraQueryParameters);
+        genericOpenIDConnectProvider.setResource(resource);
+        genericOpenIDConnectProvider.setClientID(clientId);
+        genericOpenIDConnectProvider.setRedirectURL(redirectUri);
+        genericOpenIDConnectProvider.setLoginHint(loginHint);
+        genericOpenIDConnectProvider.setPrompt(prompt);
+        genericOpenIDConnectProvider.setAuthorizationURL(queryPairs.get("authURL"));
+        genericOpenIDConnectProvider.setAuthority(extractAuthority(queryPairs.get("authURL")));
+        genericOpenIDConnectProvider.setTokenURL(queryPairs.get("tokenURL"));
+        genericOpenIDConnectProvider.setScope(queryPairs.get("scope"));
+        List<String> listToBeExtracted = new ArrayList<>();
+        listToBeExtracted.add("authURL");
+        listToBeExtracted.add("tokenURL");
+        listToBeExtracted.add("scope");
+        //re-constrcut extra query params
+        extraQueryParameters = filterAndGetString(queryPairs,listToBeExtracted);
         acquireToken(resource, clientId, redirectUri, loginHint, prompt, extraQueryParameters,
                 null, callback, EventStrings.ACQUIRE_TOKEN_5, wrapActivity(activity), false);
     }
 
+    private Map<String,String> extractParams(String queryParams) {
+            Map<String, String> queryPairs = new LinkedHashMap<String, String>();
+            String[] pairs = queryParams.split("&");
+            for (String pair : pairs) {
+                int idx = pair.indexOf('=');
+                try {
+                    queryPairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
+                }catch(UnsupportedEncodingException e){
+                    new AuthenticationException(ADALError.DECODING_QUERY_PARAMS_FAILED, "GenericOpenIDConnectProvider extract query params failed", e);
+                }
+            }
+            return queryPairs;
+    }
+
+    private String filterAndGetString(Map<String,String> queryMap, List<String> filterList) {
+        Iterator<String> listIterator = filterList.iterator();
+        while(listIterator.hasNext()){
+            String key = listIterator.next();
+            queryMap.remove(key);
+        }
+        Iterator<String> mapIterator = queryMap.keySet().iterator();
+        StringBuilder builder = new StringBuilder();
+        while(mapIterator.hasNext()){
+            String mapKey = mapIterator.next();
+            builder.append(mapKey).append('=').append(queryMap.get(mapKey)).append('&');
+        }
+        String filter = builder.toString();
+        //remove last &
+        return filter.substring(0,filter.toCharArray().length-1);
+    }
     /**
      * acquireToken will start an interactive auth flow to acquire new tokens
      * with the requested claims. Bypasses token cache if promptbehavior is not AUTO or claims are passed.
@@ -927,6 +943,8 @@ public class AuthenticationContext {
                                         String clientId,
                                         String userId,
                                         AuthenticationCallback<AuthenticationResult> callback) {
+        genericOpenIDConnectProvider.setResource(resource);
+        genericOpenIDConnectProvider.setClientID(clientId);
         acquireTokenSilentAsync(null, null, resource, clientId, userId, UserIdentifierType.UniqueId,
                 false, null, EventStrings.ACQUIRE_TOKEN_SILENT_ASYNC, callback);
     }
