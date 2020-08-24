@@ -391,10 +391,7 @@ class Oauth2 {
             message = String.format(STRING_FORMAT_QUERY_PARAM, message, AuthenticationConstants.AAD.APP_VERSION,
                     StringExtensions.urlFormEncode(mRequest.getAppVersion()));
         }
-        //refresh token call - genericOpenIDConnectProvider will be null, avoid null pointer exception
-        if(genericOpenIDConnectProvider!=null){
-            message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
-        }
+        message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
         return message;
     }
 
