@@ -164,7 +164,7 @@ class Oauth2 {
                                 AuthenticationConstants.ENCODING_UTF8))
                 .appendQueryParameter(AuthenticationConstants.OAuth2.STATE, encodeProtocolState());
 
-        //GenericOpenIDConnectProvider
+        //PKCE - Code Challenge
         queryParameter.appendQueryParameter("code_challenge",genericOpenIDConnectProvider.getCodeChallenge());
         queryParameter.appendQueryParameter("code_challenge_method","S256");
         queryParameter.appendQueryParameter("scope",URLEncoder.encode(genericOpenIDConnectProvider.getScope(),
@@ -303,7 +303,7 @@ class Oauth2 {
                     StringExtensions.urlFormEncode(mRequest.getAppVersion()));
         }
 
-        //GenericOpenIDConnect
+        //PKCE - Code Verifier
         message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
         return message;
 
@@ -390,10 +390,6 @@ class Oauth2 {
         if (!StringExtensions.isNullOrBlank(mRequest.getAppVersion())) {
             message = String.format(STRING_FORMAT_QUERY_PARAM, message, AuthenticationConstants.AAD.APP_VERSION,
                     StringExtensions.urlFormEncode(mRequest.getAppVersion()));
-        }
-        //refresh token call- avoid null pointer exception
-        if(genericOpenIDConnectProvider!=null){
-            message = message+"&code_verifier="+genericOpenIDConnectProvider.getCodeVerifier();
         }
         return message;
     }
