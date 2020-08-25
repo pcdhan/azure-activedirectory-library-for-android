@@ -119,7 +119,7 @@ public class AuthenticationContext {
      * @param appContext        It needs to have handle to the {@link Context} to use
      *                          the SharedPreferencesFileManager as a Default cache storage. It does not
      *                          need to be activity.
-     * @param authority         Authority url to send code and token requests
+     * @param authority         Authority/Token URL - extract authority from token URL
      * @param validateAuthority validate authority before sending token request
      */
     public AuthenticationContext(Context appContext, String authority, boolean validateAuthority) {
@@ -127,7 +127,11 @@ public class AuthenticationContext {
         // The fixes need to be applied before any use of Java Cryptography
         // Architecture primitives. Default cache uses encryption
         PRNGFixes.apply();
+        Logger.v(TAG,"Authority/Token URL is: "+authority);
         genericOpenIDConnectProvider = new GenericOpenIDConnectProvider();
+        genericOpenIDConnectProvider.setTokenURL(authority);
+        authority = extractAuthorityFromToken(authority);
+        Logger.v(TAG,"Authority is: "+authority);
         initialize(appContext, authority, new DefaultTokenCacheStore(appContext), validateAuthority, true);
     }
 
@@ -780,7 +784,7 @@ public class AuthenticationContext {
         request.setTelemetryRequestId(requestId);
         request.setClientCapabilities(mClientCapabilites);
         setAppInfoToRequest(request);
-
+        request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         final Looper currentLooper = Looper.myLooper();
         if (currentLooper != null && currentLooper == mContext.getMainLooper()) {
             Logger.e(TAG + methodName,
@@ -874,7 +878,7 @@ public class AuthenticationContext {
 
         request.setTelemetryRequestId(requestId);
         setAppInfoToRequest(request);
-
+        request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
 
         createAcquireTokenRequest(apiEvent).acquireToken(null, false, request,
                 new AuthenticationCallback<AuthenticationResult>() {
@@ -1063,6 +1067,7 @@ public class AuthenticationContext {
         request.setUserIdentifierType(identifierType);
         request.setClientCapabilities(mClientCapabilites);
         setAppInfoToRequest(request);
+        request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
 
         request.setTelemetryRequestId(requestId);
 
@@ -1118,7 +1123,7 @@ public class AuthenticationContext {
         request.setSilent(true);
 
         request.setTelemetryRequestId(requestId);
-
+        request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         // Broker is not supported for the Acquire Token By Refresh Token API
         createAcquireTokenRequest(apiEvent).refreshTokenWithoutCache(refreshToken, request, callback);
     }
@@ -1172,6 +1177,7 @@ public class AuthenticationContext {
         // It is not using cache and refresh is not expected to
         // show authentication activity.
         request.setSilent(true);
+        request.setGenericOpenIDConnectProvider(genericOpenIDConnectProvider);
         createAcquireTokenRequest(apiEvent).refreshTokenWithoutCache(refreshToken, request, callback);
     }
 
