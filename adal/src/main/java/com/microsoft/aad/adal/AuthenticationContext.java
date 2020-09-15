@@ -449,7 +449,7 @@ public class AuthenticationContext {
             builder.append(mapKey).append('=').append(queryMap.get(mapKey)).append('&');
         }
         String filter = builder.toString();
-        if(filter.trim().isEmpty()){
+        if(filter.isEmpty()){
           return "";
         }else {
           //remove last &
